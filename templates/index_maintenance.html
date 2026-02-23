@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArmoJ Web App</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;  /* 縦方向に並べる */
+            align-items: center;  /* 中央に揃える */
+        }
+        .button-container {
+            display: flex; /* 横並びにする */
+            justify-content: space-between; /* ボタンの間にスペースを均等に */
+            gap: 10px; /* ボタン同士の間隔を調整 */
+        }   
+
+        #canvas { 
+            border: 1px solid black;
+            margin-bottom: 10px; 
+        }
+        #drop-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ArmoJ Web App</h1>
+
+    <!-- ドラッグ＆ドロップエリア -->
+    <div id="drop-area">
+        This server is under maintenance. Please use the following server.
+        <br><a href="http://omlaby.synology.me:22222">http://omlaby.synology.me:22222</a>
+        <br><a href="http://omlaby.synology.me:33333">http://omlaby.synology.me:33333</a>
+    </div>
+
+
+</body>
+</html>

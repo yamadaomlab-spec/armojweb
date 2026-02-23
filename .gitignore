@@ -1,0 +1,9 @@
+# Python キャッシュ
+__pycache__/
+
+# data/ 配下はデフォルトで無視
+data/*
+
+# 許可するもの
+!data/fonts/
+!data/setting.json

@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArmoJ Web App</title>
+    <style>
+        /* 全体のスタイル */
+        body {
+            font-family: "Georgia", serif;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 見出し */
+        .heading {
+            text-align: center;
+            background: #553c9a;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+
+        .heading h1 {
+            font-size: 2.5rem;
+            margin: 0;
+        }
+
+        .heading p {
+            font-size: 1.2rem;
+            margin: 5px 0;
+        }
+
+        .heading a {
+            color: #f1c40f;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* コンテナ */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ドロップエリア */
+        #drop-area {
+            background-color: #fff8e1;
+            border: 2px dashed #bb8c3f;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* おしゃれな影 */
+            transition: background-color 0.3s;
+        }
+
+
+        #drop-area:hover {
+            background-color: #ffe5b4;
+        }
+
+        #drop-area input {
+            margin-top: 10px;
+        }
+
+        /* キャンバス */
+        #canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            background-color: #ffffff;
+        }
+
+        /* ボタン */
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        .button-container button {
+            padding: 10px 20px;
+            border: none;
+            background: #6a4f4b;
+            color: white;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .button-container button:hover {
+            background: #8e6758;
+        }
+
+        /* OCR結果とテキスト入力セクション */
+        .ocr-contrainer {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            gap: 20px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .ocr-result-section, .form-section {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            width: 45%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .ocr-result-section h3, .form-section h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #5d4037;
+        }
+
+        #ocrResult {
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        /* フォーム */
+        textarea {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: "Georgia", serif;
+            font-size: 1rem;
+        }
+
+        .vertical-viewer { 
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            font-family: 'Yu Mincho', 'MS Mincho', serif;
+            font-size: 1.5rem;        /* ✅ JavaScriptで可変対応可能（初期値） */
+            padding: 10px;
+            line-height: 1.5;
+            min-width: 150px;
+            width: 100%;              /* ✅ 親要素（モーダル）に応じて拡張 */
+            height: 75%;             /* ✅ モーダルの高さに応じて伸縮 */
+            border: 1px solid #ccc;
+            background: #fdfdfd;
+            box-sizing: border-box;   /* ✅ paddingを含めてサイズを調整しやすく */
+        }
+
+        #ocrModal {
+            resize: both;
+            overflow: auto;
+            width: 400px;
+            height: 600px;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        input[type="submit"] {
+            background: #7b1fa2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        input[type="submit"]:hover {
+            background: #9c27b0;
+        }        
+    </style>
+</head>
+<body>
+    <div class="heading">
+        <h1>ArmoJ Web App</h1>
+
+        <p><a href="/images">Sample Images</a></p>
+        <p><a href="https://docs.google.com/forms/d/e/1FAIpQLSfyCcKctOdYp0O7nt4SIO57T5Ly6ANP05_4yFzNHwewGn5z1w/viewform?usp=sf_link">Questionnaire(in Japanese)</a></p>
+    </div>
+    
+    <!-- ドラッグ＆ドロップエリア -->
+    <div id="drop-area">
+        Drag and Drop an image here
+        <br>OR
+        <br>
+        <input type="file" id="imageLoader" accept="application/pdf, image/*"/> 
+    </div>
+
+    <!-- PDFページ制御のための要素 -->
+    <div id="page-control" style="text-align:center; margin-top:10px;">
+        <label for="pageInput">Page: </label>
+        <input type="number" id="pageInput" min="1" value="1" style="width: 60px;">
+        <button onclick="changePage()">Go</button>
+        <span id="pageDisplay"><span id="currentPageNum">1</span> / <span id="totalPageNum">1</span></span>
+    </div>
+
+    <!--11/28 -->
+    <div id="pdf-page-controls" style="display: none; margin-top: 10px;">
+        <button id="prevPage">Previous Page</button>
+        <span id="pageInfo">Page <span id="currentPage"></span> of <span id="totalPages"></span></span>
+        <button id="nextPage">Next Page</button>
+    </div>
+    
+
+    <div class="container">
+        <canvas id="canvas"></canvas>
+
+        <!-- 回転ボタン -->
+        <div class="button-container">
+            <button onclick="rotateImage(-90)">↺ Rotate Left</button>
+            <button onclick="rotateImage(90)">↻ Rotate Right</button>
+        </div>
+
+        <!-- OCR実行ボタン -->
+        <div class="button-container">
+            <button id="charocrBtn">Character Recognition</button>
+            <button id="lineocrBtn">Line Recognition</button>
+            <button id="pageocrBtn">Page Recognition</button>  
+            <button id="toggleLbboxesBtn">Hide Boxes</button>
+        </div>
+    </div>
+
+    <!-- ラジオボタン追加 -->
+    <div style="margin-top: 10px; text-align: center;">
+        <label><input type="radio" name="accuracy" value="standard" checked> Standard</label>
+        <label><input type="radio" name="accuracy" value="high"> High Accuracy</label>
+    </div>
+
+    <!-- ステータスメッセージ -->
+    <div id="statusMessage" style="margin-top: 10px; text-align: center; font-weight: bold;"></div>
+    
+    <!-- OCR結果の表示 -->
+    <div class="ocr-contrainer">
+        <div class="ocr-result-section">
+            <h3>OCR Result:</h3>
+            <p id="ocrResult"></p>
+        </div>
+
+        <!-- テキストボックスの表示 -->
+        <div class="form-section">
+            <h3>Correct:</h3>
+            <form action="/submit" method="POST">
+                <!-- <input type="text" name="textbox" id="textbox" required> -->
+                <textarea name="textbox" id='textbox' rows="10" cols="50" required></textarea>
+                <input type="submit" id="submitBtn" value="送信">  
+            </form>    
+        </div>
+    </div>
+
+    <!-- ポップアップモーダル -->
+    <div id="ocrModal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background-color: white; border: 2px solid #888; z-index: 9999; padding: 0; border-radius: 10px; box-shadow: 0 5px 10px rgba(0,0,0,0.3);">
+        
+        <!-- ドラッグバー -->
+        <div id="ocrModalHeader" style="cursor: move; background-color: #553c9a; color: white; padding: 10px; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+            OCR Result
+        </div>
+
+        <!-- 中身 -->
+        <div style="padding: 20px;">
+            <div id="ocrModalViewer" class="vertical-viewer" contenteditable="false"></div>
+            <div style="text-align:right; margin-top: 10px;">
+                <button onclick="changeFontSize(0.2)">A+</button>
+                <button onclick="changeFontSize(-0.2)">A−</button>                
+                <button onclick="closeOcrModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result"></div>
+
+    <div id="pdf-list"></div>
+    <div id="page-buttons"></div>
+    <div id="ocrResult"></div>
+
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var imageLoader = document.getElementById('imageLoader');
+        var dropArea = document.getElementById('drop-area');
+        var img = new Image();
+        var newWidth, newHeight;
+        var currentFile;
+        var startX, startY, endX, endY, isDrawing = false;
+        var scaleFactor = 1;
+
+        let currentFontSize = 1.5;
+        function changeFontSize(delta) {
+            currentFontSize = Math.max(0.5, currentFontSize + delta);
+            document.getElementById('ocrModalViewer').style.fontSize = currentFontSize + 'rem';
+        }
+        
+        // ドラッグ＆ドロップのイベントリスナーを追加
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // pdf対応プログラム追加 10.17
+        const pdfViewer = document.getElementById("pdf-viewer");
+        const ocrResult = document.getElementById("ocr-result");
+        let pdfDocument = null;
+
+        //PDFページ制御のための変数
+        let currentPage = 1;
+        let totalPages = 0;
+
+        let currentPageImageData = null;
+        let currentRotation = 0;  // 回転角度を保持
+
+        let showLbboxes = true;  // 表示状態
+        let currentLbboxes = [];  // 直近のlbboxesデータを保持
+
+        function renderPage(pageNum) {
+            currentLbboxes = []; 
+            if (!pdfDocument || pageNum < 1 || pageNum > totalPages) return;
+
+            pdfDocument.getPage(pageNum).then((page) => {
+                const cviewport = page.getViewport({ scale: 2.0 });
+                let w = cviewport.width;
+                let h = cviewport.height;
+
+                let maxheight = 768;
+                scaleFactor = 1;
+                if (h > maxheight) {
+                    scaleFactor = maxheight / h;
+                }
+
+                newWidth = w * scaleFactor;
+                newHeight = h * scaleFactor;
+
+                const viewport = page.getViewport({ scale: 2.0 * scaleFactor });
+
+                // オフスクリーンキャンバス
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = viewport.width;
+                offCanvas.height = viewport.height;
+                const offCtx = offCanvas.getContext('2d');
+
+                page.render({ canvasContext: offCtx, viewport: viewport }).promise.then(() => {
+                    // tempImg 経由で回転描画
+                    const imgData = offCanvas.toDataURL();
+                    const tempImg = new Image();
+                    tempImg.onload = function() {
+                        currentPageImageData = imgData;  // 🔄 回転前の画像ではあるが、回転用として保持
+
+                        drawRotatedImage(tempImg);  // ✅ ここでキャンバスに回転して描画
+
+                        // ページ番号更新
+                        document.getElementById("currentPageNum").innerText = pageNum;
+                        document.getElementById("totalPageNum").innerText = totalPages;
+                    };
+                    tempImg.src = imgData;
+                });
+            });
+        }
+
+
+        function changePage() {
+            let inputPage = parseInt(document.getElementById("pageInput").value);
+            if (inputPage >= 1 && inputPage <= totalPages) {
+                currentRotation = 0;
+                currentPage = inputPage;
+                renderPage(currentPage);
+            } else {
+                alert(`ページ番号は 1 〜 ${totalPages} の範囲で指定してください。`);
+            }
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            console.log("handleDrop");
+            preventDefaults(e);
+            var dt = e.dataTransfer;
+            var file = dt.files[0];
+            currentFile = file;
+            handleFile(file);
+        }
+
+        imageLoader.addEventListener('change', function(e) {
+            console.log("imageLoader");          
+            var file = e.target.files[0];
+            currentFile = file;
+            handleFile(file);
+        });
+
+        function handleFile(file) {
+            console.log(file.type);
+            currentFile = file;
+            currentPage = 1; // ← ここを明示しておくと安全
+
+            if (file) {
+                if (file.type == "application/pdf") {
+                    handlePdfFile(file);
+                }
+                else if (file.type.match(/image\/*/)) {
+                    handleImageFile(file);
+                }
+            } else {
+                console.log('ファイルがドロップされていません');
+            }
+        }
+
+        function handleImageFile(file) {
+            console.log("handleImageFile");
+            if (!file) {
+                alert('ファイルが選択されていません');
+                return;
+            }
+
+            currentLbboxes = [];  // 現在のバウンディングボックスをリセット
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                img.onload = function() {
+                    currentRotation = 0;  // 回転リセット
+                    var maxheight = 768;
+                    scaleFactor = 1;
+
+                    if (img.height > maxheight) {
+                        scaleFactor = maxheight / img.height;
+                    }
+
+                    console.log(img.width, img.height);
+                    newWidth = img.width * scaleFactor;
+                    newHeight = img.height * scaleFactor;
+
+                    // ✅ currentPageImageData を img から取得
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = newWidth;
+                    tempCanvas.height = newHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(img, 0, 0, newWidth, newHeight);
+                    currentPageImageData = tempCanvas.toDataURL();
+
+                    drawRotatedImage(img);  // ← 回転を反映して描画
+
+                    // ページ表示情報
+                    document.getElementById("currentPageNum").innerText = 1;
+                    document.getElementById("totalPageNum").innerText = 1;
+                    document.getElementById("pageInput").value = 1;
+                };
+
+                img.src = event.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+
+
+        function handlePdfFile(file) {
+            if (!file) {
+                alert('ファイルが選択されていません');
+                return;
+            }
+
+            currentLbboxes = [];
+            currentRotation = 0;
+
+            const reader = new FileReader();
+
+            reader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then((pdf) => {
+                    pdfDocument = pdf;
+                    totalPages = pdf.numPages;
+                    currentPage = 1;
+
+                    // ✅ 表示をここで更新
+                    document.getElementById("currentPageNum").innerText = currentPage;
+                    document.getElementById("totalPageNum").innerText = totalPages;
+                    document.getElementById("pageInput").value = currentPage;
+
+                    renderPage(currentPage);
+                    // renderPdf();
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // マウスイベントで選択範囲を描画
+        canvas.addEventListener('mousedown', function(e) {
+            isDrawing = true;
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDrawing) {
+                endX = e.offsetX;
+                endY = e.offsetY;
+                redrawCanvas();
+                drawRectangle();
+            }
+        });
+
+        canvas.addEventListener('mouseup', function(e) {
+            isDrawing = false;
+            endX = e.offsetX;
+            endY = e.offsetY;
+        });
+
+        function drawRotatedImage(image) {
+            const imgWidth = newWidth;
+            const imgHeight = newHeight;
+
+            if (currentRotation % 180 === 0) {
+                canvas.width = imgWidth;
+                canvas.height = imgHeight;
+            } else {
+                canvas.width = imgHeight;
+                canvas.height = imgWidth;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(currentRotation * Math.PI / 180);
+            ctx.drawImage(image, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+            ctx.restore();
+        }
+
+        function drawBoundingBoxes(lbboxes) {
+            // 一度元画像を再描画してから矩形を描く
+            if (!currentPageImageData) return;
+
+            currentLbboxes = lbboxes;  // 現在のバウンディングボックスを保持
+
+            const tempImg = new Image();
+            tempImg.onload = function () {
+                // 回転込みで再描画
+                drawRotatedImage(tempImg);
+
+                if (!showLbboxes) return;  // 非表示なら終了
+
+                ctx.strokeStyle = 'blue';
+                ctx.lineWidth = 2;
+
+                lbboxes.forEach(box => {
+                    const x = box[0];
+                    const y = box[1];
+                    const w = (box[2] - box[0]);
+                    const h = (box[3] - box[1]);
+                    ctx.strokeRect(x, y, w, h);
+                });
+            };
+            tempImg.src = currentPageImageData;
+        }
+
+        
+
+        function redrawCanvas() {
+            if (!currentPageImageData) return;
+            
+            const tempImg = new Image();
+            tempImg.onload = function () {
+                // 回転も反映するように描画
+                drawRotatedImage(tempImg);
+                drawRectangle();
+            };
+            tempImg.src = currentPageImageData;
+        }
+
+        function drawRectangle() {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+        }
+
+        function rotateImage(angle) {
+            currentRotation = (currentRotation + angle + 360) % 360;
+            redrawCanvasWithRotation();  // ← 常に currentPageImageData を使う
+        }
+
+        function redrawCanvasWithRotation() {
+            if (!currentPageImageData) return;
+
+            const imgWidth = newWidth;
+            const imgHeight = newHeight;
+
+            const tempImg = new Image();
+            tempImg.onload = function () {
+                const image = tempImg;
+
+                // 回転角によってキャンバスサイズを変える
+                if (currentRotation % 180 === 0) {
+                    canvas.width = imgWidth;
+                    canvas.height = imgHeight;
+                } else {
+                    canvas.width = imgHeight;
+                    canvas.height = imgWidth;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(currentRotation * Math.PI / 180);
+                ctx.drawImage(image, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                ctx.restore();
+            };
+            tempImg.src = currentPageImageData;
+            drawBoundingBoxes(currentLbboxes);
+        }
+
+
+
+        // 追加
+        /* 最初はテキストボックスは非表示にする */
+        function showTextbox() {
+            document.getElementById('text-section').style.display = 'block';
+        } 
+
+
+        var charocrBtn = document.getElementById('charocrBtn');
+        var lineocrBtn = document.getElementById('lineocrBtn');      
+        var pageocrBtn = document.getElementById('pageocrBtn');
+        var submitBtn = document.getElementById('submitBtn');
+        var toggleLbboxesBtn = document.getElementById('toggleLbboxesBtn');
+
+        // OCR前に現在のcanvas内容を画像に変換して送る
+        function getCanvasAsBlob() {
+            return new Promise(resolve => {
+                canvas.toBlob(blob => {
+                    resolve(blob);
+                }, 'image/png');
+            });
+        }
+
+        // OCRを実行する処理
+        charocrBtn.addEventListener('click', async function() {
+            var x = Math.min(startX, endX);
+            var y = Math.min(startY, endY);
+            var width = Math.abs(endX - startX);
+            var height = Math.abs(endY - startY);
+
+            var formData = new FormData();
+            formData.append('scaleFactor', scaleFactor);
+            formData.append('x', x);
+            formData.append('y', y);
+            formData.append('width', width);
+            formData.append('height', height);
+            formData.append('canvas_w', canvas.width);
+            formData.append('canvas_h', canvas.height);
+
+            // キャンバスの内容をBlobとして取得
+            const canvasBlob = await getCanvasAsBlob();
+            formData.append('file', canvasBlob, 'canvas.png');
+
+            fetch('/run_charocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    document.getElementById('textbox').value = data.ocr_text;  // テキストボックスに結果を反映
+                    showOcrModal(data.ocr_text);
+                    console.log(data.status)
+                    //console.log(data.ocr_text);
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        lineocrBtn.addEventListener('click', async function() {
+            var x = Math.min(startX, endX);
+            var y = Math.min(startY, endY);
+            var width = Math.abs(endX - startX);
+            var height = Math.abs(endY - startY);
+
+            var formData = new FormData();
+            formData.append('scaleFactor', scaleFactor);
+            formData.append('x', x);
+            formData.append('y', y);
+            formData.append('width', width);
+            formData.append('height', height);
+            formData.append('canvas_w', canvas.width);
+            formData.append('canvas_h', canvas.height);
+
+            // ページ番号を追加（画像の場合は1ページ目）
+            formData.append('page', currentPage);
+
+            // キャンバスの内容をBlobとして取得
+            const canvasBlob = await getCanvasAsBlob();
+            formData.append('file', canvasBlob, 'canvas.png');
+
+            // チェックボックスの選択値を追加
+            const accuracy = document.querySelector('input[name="accuracy"]:checked').value;
+            formData.append('accuracy', accuracy); 
+
+            fetch('/run_lineocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    document.getElementById('textbox').value = data.ocr_text;
+                    showOcrModal(data.ocr_text);
+                    console.log(data.status)
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        pageocrBtn.addEventListener('click', async function() {
+            var formData = new FormData();
+
+            // ページ番号を追加（画像の場合は1ページ目）
+            formData.append('page', currentPage);
+
+            // ラジオボタンの選択値を追加
+            const accuracy = document.querySelector('input[name="accuracy"]:checked').value;
+            formData.append('accuracy', accuracy);
+            
+            // キャンバスの内容をBlobとして取得
+            const canvasBlob = await getCanvasAsBlob();
+            formData.append('file', canvasBlob, 'canvas.png');
+
+            // ✅ ステータスメッセージ開始
+            const statusDiv = document.getElementById('statusMessage');
+            let dots = '';
+            statusDiv.innerText = 'Please wait';
+            const statusInterval = setInterval(() => {
+                dots = dots.length >= 3 ? '' : dots + '.';
+                statusDiv.innerText = 'Please wait' + dots;
+            }, 500);
+
+            fetch('/run_pageocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    document.getElementById('textbox').value = data.ocr_text;
+                    showOcrModal(data.ocr_text);
+                    console.log(data.status)
+                    if (data.lbboxes) {
+                        drawBoundingBoxes(data.lbboxes);
+                    }
+                } else {
+                    alert(data.message);
+                }
+            })
+            .finally(() => {
+                clearInterval(statusInterval);
+                statusDiv.innerText = 'Done';
+                
+                // ✅ OCR後にページ情報を再表示（PDFなら）
+                if (pdfDocument) {
+                    document.getElementById("currentPageNum").innerText = currentPage;
+                    document.getElementById("totalPageNum").innerText = totalPages;
+                    document.getElementById("pageInput").value = currentPage;
+                }
+            });
+        });
+        
+        // 上に習い追加
+        // var submitBtn = document.getElementById('submitBtn');
+        submitBtn.addEventListener('click', function(event) {
+            event.preventDefault();            
+            
+            var formData = new FormData(event.target.form);
+
+            fetch('/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    document.getElementById('textbox').value = data.ocr_text;
+                    console.log(data.status)
+                } else {
+                    alert(data.message);
+                }
+            })
+        });
+
+        toggleLbboxesBtn.addEventListener('click', function() {
+            showLbboxes = !showLbboxes;
+            toggleLbboxesBtn.innerText = showLbboxes ? 'Hide Boxes' : 'Show Boxes';
+
+            if (showLbboxes && currentLbboxes.length > 0) {
+                drawBoundingBoxes(currentLbboxes);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvasWithRotation();  // 回転を反映して再描画
+            }
+        });
+
+        function showOcrModal(text) {
+            document.getElementById('ocrModalViewer').innerText = text;
+            document.getElementById('ocrModal').style.display = 'block';
+        }
+
+        function closeOcrModal() {
+            document.getElementById('ocrModal').style.display = 'none';
+        }
+
+        function makeModalDraggable(modal, header) {
+            let offsetX = 0, offsetY = 0, startX = 0, startY = 0;
+
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                startX = e.clientX;
+                startY = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                offsetX = e.clientX - startX;
+                offsetY = e.clientY - startY;
+                startX = e.clientX;
+                startY = e.clientY;
+
+                modal.style.top = (modal.offsetTop + offsetY) + "px";
+                modal.style.left = (modal.offsetLeft + offsetX) + "px";
+                modal.style.transform = ""; // 中央揃えのtransformを無効にする
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        window.onload = function () {
+            const modal = document.getElementById("ocrModal");
+            const header = document.getElementById("ocrModalHeader");
+            makeModalDraggable(modal, header);
+        };
+
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+</body>
+</html>

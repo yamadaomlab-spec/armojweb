@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArmoJ Web App</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;  /* 縦方向に並べる */
+            align-items: center;  /* 中央に揃える */
+        }
+        .button-container {
+            display: flex; /* 横並びにする */
+            justify-content: space-between; /* ボタンの間にスペースを均等に */
+            gap: 10px; /* ボタン同士の間隔を調整 */
+        }   
+
+        #canvas { 
+            border: 1px solid black;
+            margin-bottom: 10px; 
+        }
+        #drop-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ArmoJ Web App</h1>
+
+    <p><a href="/images">Sample Images</a></p>
+    <p><a href="https://docs.google.com/forms/d/e/1FAIpQLSfyCcKctOdYp0O7nt4SIO57T5Ly6ANP05_4yFzNHwewGn5z1w/viewform?usp=sf_link">Questionnaire(in Japanese)</a></p>
+    
+    <!-- ドラッグ＆ドロップエリア -->
+    <div id="drop-area">
+        Drag and Drop an image here
+        <br>OR
+        <br>
+        <input type="file" id="imageLoader" accept="image/*"/>
+    </div>
+
+    <div class="container">
+        <canvas id="canvas"></canvas>
+
+        <!-- OCR実行ボタン -->
+        <div class="button-container">
+            <button id="charocrBtn">Character Recognition</button>
+            <button id="lineocrBtn">Line Recognition</button>
+            <button id="pageocrBtn">Page Recognition</button>
+        </div>
+    </div>
+
+    <!-- OCR結果の表示 -->
+    <h3>OCR Result:</h3>
+    <p id="ocrResult"></p>
+
+
+    <script>
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var imageLoader = document.getElementById('imageLoader');
+        var dropArea = document.getElementById('drop-area');
+        var img = new Image();
+        var newWidth, newHeight;
+        var currentFile;
+        var startX, startY, endX, endY, isDrawing = false;
+        var scaleFactor = 1;
+
+        // ドラッグ＆ドロップのイベントリスナーを追加
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            preventDefaults(e);
+            var dt = e.dataTransfer;
+            var file = dt.files[0];
+            if (file) {
+                currentFile = file;
+                handleImageFile(file);
+            } else {
+                console.log('ファイルがドロップされていません');
+            }
+        }
+
+        imageLoader.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            currentFile = file;
+            handleImageFile(file);
+        });
+
+        function handleImageFile(file) {
+            if (!file) {
+                alert('ファイルが選択されていません');
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                img.onload = function() {
+                    var maxheight = 768;
+                    scaleFactor = 1;
+                    if (img.height > maxheight){
+                        scaleFactor = maxheight/img.height;
+                    }
+                    newWidth = img.width * scaleFactor;
+                    newHeight = img.height * scaleFactor;
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // マウスイベントで選択範囲を描画
+        canvas.addEventListener('mousedown', function(e) {
+            isDrawing = true;
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDrawing) {
+                endX = e.offsetX;
+                endY = e.offsetY;
+                redrawCanvas();
+                drawRectangle();
+            }
+        });
+
+        canvas.addEventListener('mouseup', function(e) {
+            isDrawing = false;
+            endX = e.offsetX;
+            endY = e.offsetY;
+        });
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+        }
+
+        function drawRectangle() {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+        }
+
+        var charocrBtn = document.getElementById('charocrBtn');
+        var lineocrBtn = document.getElementById('lineocrBtn');      
+        var pageocrBtn = document.getElementById('pageocrBtn');
+
+        // OCRを実行する処理
+        charocrBtn.addEventListener('click', function() {
+            var x = Math.min(startX, endX);
+            var y = Math.min(startY, endY);
+            var width = Math.abs(endX - startX);
+            var height = Math.abs(endY - startY);
+
+            var formData = new FormData();
+            formData.append('scaleFactor', scaleFactor);
+            formData.append('x', x);
+            formData.append('y', y);
+            formData.append('width', width);
+            formData.append('height', height);
+            formData.append('image', currentFile);
+
+            fetch('/run_charocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    console.log(data.status)
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        lineocrBtn.addEventListener('click', function() {
+            var x = Math.min(startX, endX);
+            var y = Math.min(startY, endY);
+            var width = Math.abs(endX - startX);
+            var height = Math.abs(endY - startY);
+
+            var formData = new FormData();
+            formData.append('scaleFactor', scaleFactor);
+            formData.append('x', x);
+            formData.append('y', y);
+            formData.append('width', width);
+            formData.append('height', height);
+            formData.append('image', currentFile);
+
+            fetch('/run_lineocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    console.log(data.status)
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+        pageocrBtn.addEventListener('click', function() {
+            var formData = new FormData();
+            formData.append('image', currentFile);
+
+            fetch('/run_pageocr', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('ocrResult').innerText = data.ocr_text;
+                    console.log(data.status)
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>

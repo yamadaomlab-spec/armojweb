@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ filename }} - Image View</title>
+</head>
+<body>
+    <h1>{{ filename }}</h1>
+    <img src="/static/images/{{ filename }}" alt="{{ filename }}" style="max-width: 100%;">
+    <p><a href="/download/{{ filename }}" download>Download this image</a></p>
+</body>
+</html>

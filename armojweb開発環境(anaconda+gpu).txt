@@ -1,0 +1,26 @@
+
+conda create -n armojweb python=3.12
+
+conda activate armojweb
+
+
+
+●パッケージインストール
+python -m pip install --upgrade pip setuptools
+
+# pytorch2.3.1+gpu 
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# timm
+python -m pip install timm==0.6.2.dev0
+
+# Yolo v8
+python -m pip install ultralytics
+
+# Flask
+python -m pip install flask
+
+●実行
+python app.py
+
+
