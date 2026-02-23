@@ -11,6 +11,7 @@ import json
 from threading import Thread
 from pdf2image import convert_from_path # PDFページを画像に変換
 import numpy as np
+import torch
 
 class Armoj():
     def __init__(self):
@@ -81,7 +82,11 @@ class Armoj():
     def _lineDetection(self, pil_image):
 
         results = self.yolo(pil_image)
-        yolo_xyxy_bboxes = results[0].boxes.xyxy.tolist()
+        # YOLOの出力から行のバウンディングボックスを取得し、boxesのy座標を2だけ増やす
+        boxes = results[0].boxes.xyxy
+        offset = torch.tensor([0, 2, 0, 0], device=boxes.device)
+        yolo_xyxy_bboxes = (results[0].boxes.xyxy + offset).tolist()  # y座標を1だけ増やす 2026.2.23
+        # yolo_xyxy_bboxes = results[0].boxes.xyxy.tolist()
         pbboxes = yolo_xyxy_bboxes
         pbb = pbboxes
         def my_func(b):
