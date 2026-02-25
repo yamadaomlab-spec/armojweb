@@ -22,11 +22,18 @@ class Armoj():
         self.modelC_filebasename = self.setting['modelC']
 
         # 行認識クラスインスタンス
-        self.lineTranscriptor = LineInferenceWapper(self.setting['modelL'])
+        self.lineTranscriptor = LineInferenceWapper(
+            self.setting['modelL'],
+            charset_path=self.setting.get('dictL_charset'),
+            itaiji_path=self.setting.get('dictL_itaiji')
+        )
         # 文字認識クラスインスタンス
-        self.charTranscriptor = CharInferenceWapper(self.setting['modelC'])
+        self.charTranscriptor = CharInferenceWapper(
+            self.setting['modelC'],
+            dict_path=self.setting.get('dictC')
+        )
         # YOLOインスタンス
-        self.yolo = YOLO('./data/modelY/best.pt')
+        self.yolo = YOLO(self.setting.get('modelY', './data/modelY/best.pt'))
         # self.yolo = YOLO('./data/modelY/last.pt')
         self.yolo_xyxy_bboxes = []
         self.maxheight = 768
@@ -285,18 +292,54 @@ def run_pageocr():
 
 
         img = armoj.image_resize(img)
+        rs = armoj.imagescale
+
+        # 選択範囲パラメータの取得（オプション）
+        sel_x = request.form.get('sel_x')
+        sel_y = request.form.get('sel_y')
+        sel_width = request.form.get('sel_width')
+        sel_height = request.form.get('sel_height')
+
+        crop_offset_x = 0
+        crop_offset_y = 0
+
+        if sel_x is not None and sel_y is not None and sel_width is not None and sel_height is not None:
+            # canvas座標を画像座標に変換
+            cx = int(int(sel_x) * rs)
+            cy = int(int(sel_y) * rs)
+            cw = int(int(sel_width) * rs)
+            ch = int(int(sel_height) * rs)
+
+            # 画像範囲内にクランプ
+            iw, ih = img.size
+            cx = max(0, min(cx, iw))
+            cy = max(0, min(cy, ih))
+            cw = min(cw, iw - cx)
+            ch = min(ch, ih - cy)
+
+            if cw > 0 and ch > 0:
+                img = img.crop((cx, cy, cx + cw, cy + ch))
+                crop_offset_x = cx
+                crop_offset_y = cy
+                print(f"Cropped to selection: x={cx}, y={cy}, w={cw}, h={ch}")
+
         armoj.LineDetection(img)
 
-        # ✅ スレッドで非同期に呼び出す
-        # thread = Thread(target=armoj.LineDetection, args=(img, user_id))
-        # thread.start()
-
         print(armoj.res_text)
-        print(armoj.res_lbboxes) #10.17
-        # # 文字認識結果を返す
-        rs = armoj.imagescale
-        lbboxes_jsonable = [(int(bbox[0] / rs), int(bbox[1] / rs), int(bbox[2] / rs), int(bbox[3] / rs)) for bbox in armoj.res_lbboxes]
-        cbboxes_jsonable = [[(int(box[0] / rs), int(box[1] / rs), int(box[2] / rs), int(box[3] / rs)) for box in line] for line in armoj.res_cbboxes]
+        print(armoj.res_lbboxes)
+
+        # バウンディングボックス座標にクロップオフセットを加算し、canvas座標系に戻す
+        lbboxes_jsonable = [
+            (int((bbox[0] + crop_offset_x) / rs), int((bbox[1] + crop_offset_y) / rs),
+             int((bbox[2] + crop_offset_x) / rs), int((bbox[3] + crop_offset_y) / rs))
+            for bbox in armoj.res_lbboxes
+        ]
+        cbboxes_jsonable = [
+            [(int((box[0] + crop_offset_x) / rs), int((box[1] + crop_offset_y) / rs),
+              int((box[2] + crop_offset_x) / rs), int((box[3] + crop_offset_y) / rs))
+             for box in line]
+            for line in armoj.res_cbboxes
+        ]
 
         return jsonify({
             'status': 'success',
@@ -321,5 +364,5 @@ def submit():
     return render_template('index.html', result=user_input)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=22222) 
+    app.run(host='0.0.0.0', port=11111) 
     # app.run(debug=True) #ローカル

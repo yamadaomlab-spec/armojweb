@@ -13,7 +13,7 @@ def softmax(x):
     return np.exp(x)/u
 
 class CharInferenceWapper():
-    def __init__(self, model_basename):
+    def __init__(self, model_basename, dict_path=None):
         super(CharInferenceWapper, self).__init__()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -23,7 +23,9 @@ class CharInferenceWapper():
         #             ]
 
         # 学習データのカテゴリの辞書をゲット　データ数＿文字　というラベル名になっているので、認識結果の出力時に最後の１文字を返すようにしています。
-        with open('./data/dicts/c2i_dict.pkl', 'rb') as f:
+        if dict_path is None:
+            dict_path = './data/dicts/c2i_dict.pkl'
+        with open(dict_path, 'rb') as f:
             c2i_dict = pickle.load(f)
 
         self.cat_list = list(c2i_dict.keys())

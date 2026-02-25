@@ -3,6 +3,7 @@ __pycache__/
 
 # data/ 配下はデフォルトで無視
 data/*
+CLAUDE.md
 
 # 許可するもの
 !data/fonts/

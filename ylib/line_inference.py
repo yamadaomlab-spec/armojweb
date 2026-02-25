@@ -25,7 +25,7 @@ import glob
 from ylib.config import get_args_parser
 
 class LineInferenceWapper():
-    def __init__(self, model_basename):
+    def __init__(self, model_basename, charset_path=None, itaiji_path=None):
         super(LineInferenceWapper, self).__init__()
         parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
         
@@ -50,12 +50,9 @@ class LineInferenceWapper():
         self.accuracy_mode =  'standard'
         self.w = 64
 
-        # charset_filename = './data/dicts/dhp20231110_charset.pkl'
-        charset_filename = './data/dicts/marge_and_dhp20231110_katsujisample20250606_and_copus_charset.pkl'
-        # charset_filename = './data/dicts/marge_and_dhp20231110_katsujisample20250606_charset.pkl'
-        # charset_filename = './data/dicts/marge_and_dhp20231110_charset.pkl'
-        # charset_filename = './data/dicts/minhon_and_dhp20231110_charset.pkl'
-        # charset_filename = './data/dicts/charset_base.pkl'
+        if charset_path is None:
+            charset_path = './data/dicts/marge_and_dhp20231110_katsujisample20250606_and_copus_charset.pkl'
+        charset_filename = charset_path
         with open(charset_filename, 'rb') as f:
             charset_base = pickle.load(f)
 
@@ -67,7 +64,9 @@ class LineInferenceWapper():
         # self.device = 'cpu'
 
         # Tokenizer
-        path_to_itaiji = f'./data/dicts/itaiji.txt'
+        if itaiji_path is None:
+            itaiji_path = './data/dicts/itaiji.txt'
+        path_to_itaiji = itaiji_path
         itaiji = {}
         with open(path_to_itaiji, 'r', encoding="utf-8") as f:
             for line in f:

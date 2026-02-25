@@ -220,6 +220,8 @@
         <!-- 回転ボタン -->
         <div class="button-container">
             <button onclick="rotateImage(-90)">↺ Rotate Left</button>
+            <button onclick="rotateImage(-1)">-1°</button>
+            <button onclick="rotateImage(1)">+1°</button>
             <button onclick="rotateImage(90)">↻ Rotate Right</button>
         </div>
 
@@ -227,7 +229,8 @@
         <div class="button-container">
             <button id="charocrBtn">Character Recognition</button>
             <button id="lineocrBtn">Line Recognition</button>
-            <button id="pageocrBtn">Page Recognition</button>  
+            <button id="pageocrBtn">Page Recognition</button>
+            <button id="clearSelectionBtn">Clear Selection</button>
             <button id="toggleLbboxesBtn">Hide Boxes</button>
         </div>
     </div>
@@ -295,6 +298,7 @@
         var newWidth, newHeight;
         var currentFile;
         var startX, startY, endX, endY, isDrawing = false;
+        var hasSelection = false;
         var scaleFactor = 1;
 
         let currentFontSize = 1.5;
@@ -516,24 +520,25 @@
             isDrawing = false;
             endX = e.offsetX;
             endY = e.offsetY;
+            hasSelection = true;
         });
 
         function drawRotatedImage(image) {
             const imgWidth = newWidth;
             const imgHeight = newHeight;
+            const rad = currentRotation * Math.PI / 180;
 
-            if (currentRotation % 180 === 0) {
-                canvas.width = imgWidth;
-                canvas.height = imgHeight;
-            } else {
-                canvas.width = imgHeight;
-                canvas.height = imgWidth;
-            }
+            // 任意角度に対応したキャンバスサイズ計算
+            const rotW = Math.abs(imgWidth * Math.cos(rad)) + Math.abs(imgHeight * Math.sin(rad));
+            const rotH = Math.abs(imgWidth * Math.sin(rad)) + Math.abs(imgHeight * Math.cos(rad));
+
+            canvas.width = Math.ceil(rotW);
+            canvas.height = Math.ceil(rotH);
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(currentRotation * Math.PI / 180);
+            ctx.rotate(rad);
             ctx.drawImage(image, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
             ctx.restore();
         }
@@ -593,28 +598,9 @@
         function redrawCanvasWithRotation() {
             if (!currentPageImageData) return;
 
-            const imgWidth = newWidth;
-            const imgHeight = newHeight;
-
             const tempImg = new Image();
             tempImg.onload = function () {
-                const image = tempImg;
-
-                // 回転角によってキャンバスサイズを変える
-                if (currentRotation % 180 === 0) {
-                    canvas.width = imgWidth;
-                    canvas.height = imgHeight;
-                } else {
-                    canvas.width = imgHeight;
-                    canvas.height = imgWidth;
-                }
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate(currentRotation * Math.PI / 180);
-                ctx.drawImage(image, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
-                ctx.restore();
+                drawRotatedImage(tempImg);
             };
             tempImg.src = currentPageImageData;
             drawBoundingBoxes(currentLbboxes);
@@ -630,10 +616,20 @@
 
 
         var charocrBtn = document.getElementById('charocrBtn');
-        var lineocrBtn = document.getElementById('lineocrBtn');      
+        var lineocrBtn = document.getElementById('lineocrBtn');
         var pageocrBtn = document.getElementById('pageocrBtn');
+        var clearSelectionBtn = document.getElementById('clearSelectionBtn');
         var submitBtn = document.getElementById('submitBtn');
         var toggleLbboxesBtn = document.getElementById('toggleLbboxesBtn');
+
+        clearSelectionBtn.addEventListener('click', function() {
+            hasSelection = false;
+            startX = undefined;
+            startY = undefined;
+            endX = undefined;
+            endY = undefined;
+            redrawCanvasWithRotation();
+        });
 
         // OCR前に現在のcanvas内容を画像に変換して送る
         function getCanvasAsBlob() {
@@ -734,7 +730,19 @@
             // ラジオボタンの選択値を追加
             const accuracy = document.querySelector('input[name="accuracy"]:checked').value;
             formData.append('accuracy', accuracy);
-            
+
+            // 選択範囲がある場合、座標を送信
+            if (hasSelection) {
+                var selX = Math.min(startX, endX);
+                var selY = Math.min(startY, endY);
+                var selW = Math.abs(endX - startX);
+                var selH = Math.abs(endY - startY);
+                formData.append('sel_x', selX);
+                formData.append('sel_y', selY);
+                formData.append('sel_width', selW);
+                formData.append('sel_height', selH);
+            }
+
             // キャンバスの内容をBlobとして取得
             const canvasBlob = await getCanvasAsBlob();
             formData.append('file', canvasBlob, 'canvas.png');

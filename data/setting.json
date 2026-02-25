@@ -1,4 +1,8 @@
 {
+  "modelY": "./data/modelY/best.pt",
   "modelL": "model_dict20260223.pt",
-  "modelC": "full_ViT_addRandAffine_test_33.pth"
+  "modelC": "full_ViT_addRandAffine_test_33.pth",
+  "dictL_charset": "./data/dicts/marge_and_dhp20231110_katsujisample20250606_and_copus_charset.pkl",
+  "dictL_itaiji": "./data/dicts/itaiji.txt",
+  "dictC": "./data/dicts/c2i_dict.pkl"
 }
