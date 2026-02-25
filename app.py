@@ -364,5 +364,8 @@ def submit():
     return render_template('index.html', result=user_input)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=11111) 
-    # app.run(debug=True) #ローカル
+    import argparse as _argparse
+    _parser = _argparse.ArgumentParser()
+    _parser.add_argument('--port', type=int, default=11111)
+    _args = _parser.parse_args()
+    app.run(host='0.0.0.0', port=_args.port)
