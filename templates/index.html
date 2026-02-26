@@ -241,6 +241,13 @@
         <label><input type="radio" name="accuracy" value="high"> High Accuracy</label>
     </div>
 
+    <!-- YOLO conf スライダー -->
+    <div style="margin-top: 10px; text-align: center;">
+        <label for="yoloConfSlider">YOLO Conf: <span id="yoloConfValue">0.25</span></label>
+        <input type="range" id="yoloConfSlider" min="0.25" max="0.95" step="0.05" value="0.25"
+            oninput="document.getElementById('yoloConfValue').innerText = parseFloat(this.value).toFixed(2)">
+    </div>
+
     <!-- ステータスメッセージ -->
     <div id="statusMessage" style="margin-top: 10px; text-align: center; font-weight: bold;"></div>
     
@@ -307,10 +314,12 @@
             document.getElementById('ocrModalViewer').style.fontSize = currentFontSize + 'rem';
         }
         
-        // ドラッグ＆ドロップのイベントリスナーを追加
+        // ドラッグ＆ドロップのイベントリスナーを追加（drop-areaとcanvas両方）
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, preventDefaults, false);
+            canvas.addEventListener(eventName, preventDefaults, false);
         });
+        canvas.addEventListener('drop', handleDrop, false);
 
         // pdf対応プログラム追加 10.17
         const pdfViewer = document.getElementById("pdf-viewer");
@@ -640,8 +649,37 @@
             });
         }
 
+        // バウンディングボックスなしの元画像からBlobを生成（Page Recognition用）
+        function getOriginalImageAsBlob() {
+            return new Promise(resolve => {
+                if (!currentPageImageData) {
+                    // フォールバック: 現在のcanvasをそのまま使う
+                    canvas.toBlob(blob => resolve(blob), 'image/png');
+                    return;
+                }
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    const tmpCanvas = document.createElement('canvas');
+                    const tmpCtx = tmpCanvas.getContext('2d');
+                    tmpCanvas.width = canvas.width;
+                    tmpCanvas.height = canvas.height;
+                    // 回転を反映して元画像を描画（バウンディングボックスなし）
+                    const rad = currentRotation * Math.PI / 180;
+                    tmpCtx.translate(tmpCanvas.width / 2, tmpCanvas.height / 2);
+                    tmpCtx.rotate(rad);
+                    tmpCtx.drawImage(tempImg, -newWidth / 2, -newHeight / 2, newWidth, newHeight);
+                    tmpCanvas.toBlob(blob => resolve(blob), 'image/png');
+                };
+                tempImg.src = currentPageImageData;
+            });
+        }
+
         // OCRを実行する処理
         charocrBtn.addEventListener('click', async function() {
+            if (!hasSelection || !isFinite(startX) || !isFinite(endX)) {
+                alert('Please draw a rectangle to select a region first.');
+                return;
+            }
             var x = Math.min(startX, endX);
             var y = Math.min(startY, endY);
             var width = Math.abs(endX - startX);
@@ -679,6 +717,10 @@
         });
 
         lineocrBtn.addEventListener('click', async function() {
+            if (!hasSelection || !isFinite(startX) || !isFinite(endX)) {
+                alert('Please draw a rectangle to select a region first.');
+                return;
+            }
             var x = Math.min(startX, endX);
             var y = Math.min(startY, endY);
             var width = Math.abs(endX - startX);
@@ -731,20 +773,26 @@
             const accuracy = document.querySelector('input[name="accuracy"]:checked').value;
             formData.append('accuracy', accuracy);
 
-            // 選択範囲がある場合、座標を送信
-            if (hasSelection) {
+            // YOLO conf値を追加
+            const yoloConf = document.getElementById('yoloConfSlider').value;
+            formData.append('yolo_conf', yoloConf);
+
+            // 選択範囲がある場合、座標を送信（座標が有効な数値の場合のみ）
+            if (hasSelection && isFinite(startX) && isFinite(startY) && isFinite(endX) && isFinite(endY)) {
                 var selX = Math.min(startX, endX);
                 var selY = Math.min(startY, endY);
                 var selW = Math.abs(endX - startX);
                 var selH = Math.abs(endY - startY);
-                formData.append('sel_x', selX);
-                formData.append('sel_y', selY);
-                formData.append('sel_width', selW);
-                formData.append('sel_height', selH);
+                if (selW > 0 && selH > 0) {
+                    formData.append('sel_x', selX);
+                    formData.append('sel_y', selY);
+                    formData.append('sel_width', selW);
+                    formData.append('sel_height', selH);
+                }
             }
 
-            // キャンバスの内容をBlobとして取得
-            const canvasBlob = await getCanvasAsBlob();
+            // バウンディングボックスなしの元画像からBlobを生成
+            const canvasBlob = await getOriginalImageAsBlob();
             formData.append('file', canvasBlob, 'canvas.png');
 
             // ✅ ステータスメッセージ開始
@@ -770,6 +818,8 @@
                     if (data.lbboxes) {
                         drawBoundingBoxes(data.lbboxes);
                     }
+                    // 認識完了後に選択状態をリセット
+                    hasSelection = false;
                 } else {
                     alert(data.message);
                 }

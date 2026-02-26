@@ -15,6 +15,12 @@ import torch
 
 class Armoj():
     def __init__(self):
+        # GPU推論の再現性を確保
+        torch.manual_seed(0)
+        torch.cuda.manual_seed(0)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
         with open('./data/setting.json') as f:
             self.setting = json.load(f)
 
@@ -86,9 +92,13 @@ class Armoj():
             
         return vtext, len(cls)
     
-    def _lineDetection(self, pil_image):
+    def _lineDetection(self, pil_image, conf=0.25):
+        # 毎回同じ結果を得るためシードをリセット
+        torch.manual_seed(0)
+        torch.cuda.manual_seed_all(0)
+        np.random.seed(0)
 
-        results = self.yolo(pil_image)
+        results = self.yolo(pil_image, conf=conf)
         # YOLOの出力から行のバウンディングボックスを取得し、boxesのy座標を2だけ増やす
         boxes = results[0].boxes.xyxy
         offset = torch.tensor([0, 2, 0, 0], device=boxes.device)
@@ -119,10 +129,10 @@ class Armoj():
         self.res_cbboxes = multiline_cbboxes #10.17
         self.res_lbboxes = multiline_lbboxes #10.17
         
-    def LineDetection(self, pil_image, user_id=None):
+    def LineDetection(self, pil_image, conf=0.25, user_id=None):
         # t = Thread(target = self._lineDetection, args=(pil_image,))
         # t.start()
-        self._lineDetection(pil_image)
+        self._lineDetection(pil_image, conf=conf)
         return
 
 armoj = Armoj()
@@ -259,8 +269,9 @@ def run_pageocr():
     try:
         accuracy = request.form.get('accuracy', 'standard')
         page_number = int(request.form.get('page', '1'))
+        yolo_conf = float(request.form.get('yolo_conf', '0.25'))
         armoj.lineTranscriptor.accuracy_mode = accuracy
-        print("OCR accuracy mode:", accuracy)
+        print("OCR accuracy mode:", accuracy, "YOLO conf:", yolo_conf)
 
         # 保存先ディレクトリが存在しない場合は作成
         upload_folder = 'uploads'
@@ -323,7 +334,7 @@ def run_pageocr():
                 crop_offset_y = cy
                 print(f"Cropped to selection: x={cx}, y={cy}, w={cw}, h={ch}")
 
-        armoj.LineDetection(img)
+        armoj.LineDetection(img, conf=yolo_conf)
 
         print(armoj.res_text)
         print(armoj.res_lbboxes)
