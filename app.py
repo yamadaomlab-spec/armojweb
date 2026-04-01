@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from PIL import Image
 import os
 import datetime
+import uuid
 # import pytesseract
 
 from ylib.line_inference import LineInferenceWapper
@@ -371,7 +372,7 @@ def submit():
         user_input = request.form['textbox']
 
         # タイムスタンプ付きフォルダを作成
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + uuid.uuid4().hex[:4]
         save_dir = os.path.join('receive_data', timestamp)
         os.makedirs(save_dir, exist_ok=True)
 
