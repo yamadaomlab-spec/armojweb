@@ -839,10 +839,14 @@
         
         // 上に習い追加
         // var submitBtn = document.getElementById('submitBtn');
-        submitBtn.addEventListener('click', function(event) {
-            event.preventDefault();            
-            
+        submitBtn.addEventListener('click', async function(event) {
+            event.preventDefault();
+
             var formData = new FormData(event.target.form);
+
+            // bbox なしの元画像を追加
+            const imageBlob = await getOriginalImageAsBlob();
+            formData.append('image', imageBlob, 'image.png');
 
             fetch('/submit', {
                 method: 'POST',
@@ -851,8 +855,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    document.getElementById('ocrResult').innerText = data.ocr_text;
-                    document.getElementById('textbox').value = data.ocr_text;
                     console.log(data.status)
                 } else {
                     alert(data.message);

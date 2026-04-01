@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from PIL import Image
 import os
+import datetime
 # import pytesseract
 
 from ylib.line_inference import LineInferenceWapper
@@ -366,13 +367,26 @@ def run_pageocr():
 # 追加
 @app.route('/submit', methods=['GET','POST'])
 def submit():
-    if request.method == 'POST': 
+    if request.method == 'POST':
         user_input = request.form['textbox']
-        # テキストをファイルに保存
-        with open('input_text_file.txt', 'a', encoding='utf-8') as file:
-            input = file.write(user_input + '\n')  # テキストを1行ごとに追加 10.24
-        return f"あなたの入力: {input}"  # 10.24
-    return render_template('index.html', result=user_input)
+
+        # タイムスタンプ付きフォルダを作成
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        save_dir = os.path.join('receive_data', timestamp)
+        os.makedirs(save_dir, exist_ok=True)
+
+        # テキストを correct.txt に保存
+        with open(os.path.join(save_dir, 'correct.txt'), 'w', encoding='utf-8') as f:
+            f.write(user_input)
+
+        # 画像を image.jpg に保存
+        image_file = request.files.get('image')
+        if image_file:
+            img = Image.open(image_file).convert('RGB')
+            img.save(os.path.join(save_dir, 'image.jpg'), 'JPEG')
+
+        return jsonify({'status': 'success'})
+    return render_template('index.html', result=None)
 
 if __name__ == "__main__":
     import argparse as _argparse
